@@ -3,7 +3,15 @@ import { Request } from 'express';
 import { Server } from '@hocuspocus/server';
 import { Logger } from '@hocuspocus/extension-logger';
 import { Database } from '@hocuspocus/extension-database';
+import { data } from './db';
+
+import { defaultMarkdownParser, defaultMarkdownSerializer } from 'prosemirror-markdown';
+import { prosemirrorToYDoc, prosemirrorToYXmlFragment, yDocToProsemirror } from 'y-prosemirror';
 import * as Y from 'yjs';
+import { getSchema } from '@tiptap/core';
+import StarterKit from '@tiptap/starter-kit';
+
+const schema = getSchema([StarterKit]);
 
 const server = Server.configure({
   port: 1234,
@@ -14,11 +22,22 @@ const server = Server.configure({
     new Database({
       fetch: async ({ documentName }) => {
         console.log('fetch documentName', documentName);
-        return null;
+        if (data[documentName]) {
+          return data[documentName];
+        }
+        console.log(`document ${documentName} not found, initializing...`);
+        const doc = defaultMarkdownParser.parse('# Empty document\n## Write your first document!');
+        console.log('parsed doc', doc);
+        const ydoc = new Y.Doc();
+        prosemirrorToYXmlFragment(doc, ydoc.getXmlFragment('default'));
+        console.log('ydoc', ydoc.getXmlFragment('default').toJSON());
+        return Y.encodeStateAsUpdate(ydoc);
       },
-      store: async ({ state, document }) => {
-        console.log('store state', state);
-        console.log('doc content', document.getXmlFragment('default').toJSON());
+      store: async ({ state, documentName, document }) => {
+        console.log('document', document.getXmlFragment('default').toJSON());
+        data[documentName] = state;
+        const doc = yDocToProsemirror(schema, document);
+        console.log('doc markdown content', defaultMarkdownSerializer.serialize(doc));
       },
     }),
   ],

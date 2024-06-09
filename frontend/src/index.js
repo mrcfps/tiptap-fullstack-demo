@@ -7,7 +7,7 @@ import reportWebVitals from "./reportWebVitals";
 
 ReactDOM.render(
   <React.StrictMode>
-    <App />
+    <Tiptap />
   </React.StrictMode>,
   document.getElementById("root")
 );

@@ -7,39 +7,66 @@ import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import React, { useEffect, useState } from "react";
-// import * as Y from "yjs";
+import React, { useEffect, useMemo, useState } from "react";
+import * as Y from "yjs";
 
 import "./index.css";
 
-const websocketProvider = new HocuspocusProvider({
-  url: "ws://localhost:1234",
-  name: "test",
-});
+// const websocketProvider = new HocuspocusProvider({
+//   url: "ws://localhost:1234",
+//   name: "test",
+// });
+
+function DocList({ docs, setDocs, handleEdit }) {
+  const [inputValue, setInputValue] = useState();
+
+  const handleInputChange = (e) => {
+    setInputValue(e.target.value);
+  };
+
+  const handleAddDoc = () => {
+    if (inputValue.trim()) {
+      setDocs([...docs, inputValue.trim()]);
+      setInputValue("");
+    }
+  };
+
+  return (
+    <div>
+      <h2>Doc List</h2>
+      <div>
+        <input type="text" value={inputValue} onChange={handleInputChange} />
+        <button onClick={handleAddDoc}>Add Document</button>
+      </div>
+      <ul>
+        {docs.map((docName, index) => (
+          <li
+            key={index}
+            onClick={() => handleEdit(docName)}
+            style={{ cursor: "pointer" }}
+          >
+            {docName}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 const Tiptap = () => {
-  const [status, setStatus] = useState("connecting");
+  const [docs, setDocs] = useState([]);
 
-  // eslint-disable-next-line
-  const editor = useEditor({
-    extensions: [
-      StarterKit.configure({
-        history: false,
-      }),
-      Highlight,
-      TaskList,
-      TaskItem,
-      CharacterCount.configure({
-        limit: 10000,
-      }),
-      // Collaboration.configure({
-      //   document: websocketProvider.document,
-      // }),
-      // CollaborationCursor.configure({
-      //   provider: websocketProvider,
-      // }),
-    ],
-  });
+  useEffect(() => {
+    const fetchData = async () => {
+      const res = await fetch("http://localhost:5555/docList");
+      const data = await res.json();
+      setDocs(data);
+    };
+    fetchData();
+  }, []);
+
+  const [status, setStatus] = useState("disconnected");
+  const [docName, setDocName] = useState("test");
 
   useEffect(() => {
     // Update status changes
@@ -48,10 +75,58 @@ const Tiptap = () => {
     });
   }, []);
 
+  const websocketProvider = useMemo(() => {
+    return new HocuspocusProvider({
+      url: "ws://localhost:1234",
+      name: docName,
+    });
+  }, [docName]);
+
+  // eslint-disable-next-line
+  const editor = useEditor(
+    {
+      extensions: [
+        StarterKit.configure({
+          history: false,
+        }),
+        Highlight,
+        TaskList,
+        TaskItem,
+        CharacterCount.configure({
+          limit: 10000,
+        }),
+        Collaboration.configure({
+          document: websocketProvider.document,
+        }),
+        CollaborationCursor.configure({
+          provider: websocketProvider,
+        }),
+      ],
+      onUpdate: ({ editor }) => {
+        console.log("update", editor.getJSON());
+      },
+    },
+    [docName]
+  );
+
   return (
     <div className="editor">
-      <EditorContent className="editor__content" editor={editor} />
+      <DocList
+        docs={docs}
+        setDocs={setDocs}
+        handleEdit={(docName) => setDocName(docName)}
+      />
+      {docs.length > 0 ? (
+        <EditorContent
+          style={{ margin: "1rem", border: "1px solid gray" }}
+          className="editor__content"
+          editor={editor}
+        />
+      ) : null}
       <div className="editor__footer">
+        <div className="editor__name">
+          <span>Current document: {docName}</span>
+        </div>
         <div className="editor__name">
           <span>Current status: {status}</span>
         </div>
