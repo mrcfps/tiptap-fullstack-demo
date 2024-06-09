@@ -38,6 +38,9 @@ dependencies:
   prosemirror-markdown:
     specifier: ^1.13.0
     version: 1.13.0
+  prosemirror-model:
+    specifier: ^1.21.1
+    version: 1.21.1
   reflect-metadata:
     specifier: ^0.2.0
     version: 0.2.2

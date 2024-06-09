@@ -1,6 +1,9 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Param } from '@nestjs/common';
 import { AppService } from './app.service';
-import { data } from './db';
+import { data, schema } from './db';
+import { yXmlFragmentToProseMirrorRootNode } from 'y-prosemirror';
+import * as Y from 'yjs';
+import { defaultMarkdownSerializer } from 'prosemirror-markdown';
 
 @Controller()
 export class AppController {
@@ -14,5 +17,18 @@ export class AppController {
   @Get('/docList')
   getDocList() {
     return Object.keys(data);
+  }
+
+  @Get('/doc/:documentName')
+  getDocDetail(@Param('documentName') documentName: string) {
+    const state = data[documentName];
+    console.log('state', state);
+    if (!state) {
+      return { data: '' };
+    }
+    const ydoc = new Y.Doc();
+    Y.applyUpdate(ydoc, state);
+    const doc = yXmlFragmentToProseMirrorRootNode(ydoc.getXmlFragment('default'), schema);
+    return { data: defaultMarkdownSerializer.serialize(doc) };
   }
 }
